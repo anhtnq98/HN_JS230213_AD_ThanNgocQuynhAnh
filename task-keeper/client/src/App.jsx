@@ -11,20 +11,20 @@ function App() {
     Status: "",
     AssignedTo: "",
   });
-  const renderTasks = () => {
-    axios
+  const renderTasks = async () => {
+    await axios
       .get("http://localhost:5000/api/v1/tasks")
-      .then((res) => setTasks(res.data))
+      .then((res) => setTasks(res.data.data))
       .catch((err) => err);
   };
-  renderTasks();
+  // renderTasks();
 
   const handleChange = (e) => {
     const newValue = { ...value, [e.target.name]: e.target.value };
     setValue(newValue);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     if (
       !value.Content ||
       !value.DueDate ||
@@ -35,7 +35,7 @@ function App() {
       return;
     }
 
-    axios.post("http://localhost:5000/api/v1/tasks", value);
+    await axios.post("http://localhost:5000/api/v1/tasks", value);
     setValue({
       Content: "",
       DueDate: "",
@@ -45,21 +45,46 @@ function App() {
     renderTasks();
   };
 
-  const handleDelete = (id) => {
-    axios.delete(`http://localhost:5000/api/v1/tasks/${id}`);
+  const handleDelete = async (id) => {
+    await axios.delete(`http://localhost:5000/api/v1/tasks/${id}`);
   };
 
   const handleUpdate = (id) => {
     setInputOrNot(id);
   };
 
-  const handleChangeEdit = () => {};
+  const handleChangeEdit = (e) => {
+    const newValue = [...tasks];
+    let taskIndex = newValue.findIndex((e) => e.Task_id === inputOrNot);
+    newValue[taskIndex] = {
+      ...tasks[taskIndex],
+      [e.target.name]: e.target.value,
+    };
 
-  const handleCancel = () => {
-    setInputOrNot(null);
+    setTasks(newValue);
   };
 
-  const handleConfirm = (id) => {};
+  const handleCancel = () => {
+    setInputOrNot(-1);
+  };
+
+  const handleConfirm = async (id) => {
+    let taskIndex = tasks.findIndex((e) => e.Task_id === inputOrNot);
+    await axios.put(
+      `http://localhost:5000/api/v1/tasks/${id}`,
+      tasks[taskIndex]
+    );
+    setInputOrNot(-1);
+    renderTasks();
+  };
+
+  function convertToValidDate(dateString) {
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
 
   useEffect(() => {
     renderTasks();
@@ -165,7 +190,8 @@ function App() {
             </tr>
           </thead>
           <tbody>
-            {tasks.data?.map((task, taskIndex) => (
+            {/* {console.log(tasks, "<--- this is task")} */}
+            {tasks?.map((task, taskIndex) => (
               <>
                 {inputOrNot !== task.Task_id ? (
                   <>
@@ -213,14 +239,16 @@ function App() {
                           aria-label="Content"
                           aria-describedby="basic-addon1"
                           onChange={handleChangeEdit}
-                          value={value.Content}
+                          value={task.Content}
                         />
                       </td>
                       <td>
                         <input
+                          name="DueDate"
                           type="date"
                           className="form-control"
                           onChange={handleChangeEdit}
+                          value={convertToValidDate(task.DueDate)}
                         />
                       </td>
                       <td>
@@ -228,6 +256,7 @@ function App() {
                           className="form-select"
                           onChange={handleChangeEdit}
                           name="Status"
+                          value={task.Status}
                         >
                           <option selected="">Choose</option>
                           <option value={1}>Pending</option>
@@ -244,12 +273,14 @@ function App() {
                           aria-label="Username"
                           aria-describedby="basic-addon1"
                           onChange={handleChangeEdit}
-                          value={value.AssignedTo}
+                          value={task.AssignedTo}
                         />
                       </td>
                       <td>
                         <button
-                          onClick={(e) => handleConfirm(task.Task_id)}
+                          onClick={(e) =>
+                            handleConfirm(task.Task_id, taskIndex)
+                          }
                           style={{ marginRight: "3px" }}
                           type="button"
                           className="btn btn-info"
